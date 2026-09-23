@@ -1,0 +1,527 @@
+{
+  "name": "iSolarCloud Data Collector (Postgres + Weather)",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Extract data from all plants\nconst plants = $input.first().json.plants;\nconst timestamp = $input.first().json.timestamp;\nconst results = [];\n\nfor (const [plantId, data] of Object.entries(plants)) {\n  results.push({\n    timestamp: timestamp,\n    plant_id: plantId,\n    power_w: parseFloat(data.power?.value || 0),\n    daily_yield_wh: parseFloat(data.daily_yield?.value || 0),\n    total_yield_wh: parseFloat(data.total_yield?.value || 0),\n    meter_ac_power_w: parseFloat(data.meter_ac_power?.value || 0),\n    load_power_w: parseFloat(data.load_power?.value || 0),\n    feed_in_energy_total_wh: parseFloat(data.feed_in_energy_total?.value || 0),\n    total_purchased_energy_wh: parseFloat(data.total_purchased_energy?.value || 0)\n  });\n}\n\nreturn results;"
+      },
+      "id": "98042229-d09d-4057-89fa-f765dadcfa43",
+      "name": "Extract Plant Data3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine the weather reading and air-quality reading into one flat object.\n// Field names here match the solar_weather_data table columns 1:1.\nconst weather = $('GET Weather Data').first().json.current;\nconst aq = $input.first().json.current;\n\nreturn [{\n  json: {\n    solar_radiation_wm2: weather.shortwave_radiation,\n    outdoor_temp_c: weather.temperature_2m,\n    dew_point_c: weather.dew_point_2m,\n    wind_speed_ms: weather.wind_speed_10m,\n    wind_dir_deg: weather.wind_direction_10m,\n    humidity_pct: weather.relative_humidity_2m,\n    rain_mm: weather.rain,\n    pm25_ugm3: aq.pm2_5,\n    pm10_ugm3: aq.pm10\n  }\n}];"
+      },
+      "id": "44df59c7-3ae7-4684-8718-88f48f65caff",
+      "name": "Combine Weather And AQ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "e95022e5-42fe-44d3-9b53-41a1cec865c6",
+      "name": "Merge Plant + Weather",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        624,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "solar_weather_data"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ts": "={{ DateTime.fromISO($json.timestamp, { zone: 'Africa/Tunis' }).toUTC().toISO() }}",
+            "plant_id": "={{ $json.plant_id }}",
+            "power_w": "={{ $json.power_w }}",
+            "daily_yield_wh": "={{ $json.daily_yield_wh }}",
+            "total_yield_wh": "={{ $json.total_yield_wh }}",
+            "meter_ac_power_w": "={{ $json.meter_ac_power_w }}",
+            "load_power_w": "={{ $json.load_power_w }}",
+            "feed_in_energy_total_wh": "={{ $json.feed_in_energy_total_wh }}",
+            "total_purchased_energy_wh": "={{ $json.total_purchased_energy_wh }}",
+            "solar_radiation_wm2": "={{ $json.solar_radiation_wm2 }}",
+            "outdoor_temp_c": "={{ $json.outdoor_temp_c }}",
+            "dew_point_c": "={{ $json.dew_point_c }}",
+            "wind_speed_ms": "={{ $json.wind_speed_ms }}",
+            "wind_dir_deg": "={{ $json.wind_dir_deg }}",
+            "humidity_pct": "={{ $json.humidity_pct }}",
+            "rain_mm": "={{ $json.rain_mm }}",
+            "pm25_ugm3": "={{ $json.pm25_ugm3 }}",
+            "pm10_ugm3": "={{ $json.pm10_ugm3 }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ts",
+              "displayName": "ts",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "plant_id",
+              "displayName": "plant_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "power_w",
+              "displayName": "power_w",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "daily_yield_wh",
+              "displayName": "daily_yield_wh",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "total_yield_wh",
+              "displayName": "total_yield_wh",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "meter_ac_power_w",
+              "displayName": "meter_ac_power_w",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "load_power_w",
+              "displayName": "load_power_w",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "feed_in_energy_total_wh",
+              "displayName": "feed_in_energy_total_wh",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "total_purchased_energy_wh",
+              "displayName": "total_purchased_energy_wh",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "solar_radiation_wm2",
+              "displayName": "solar_radiation_wm2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "outdoor_temp_c",
+              "displayName": "outdoor_temp_c",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "dew_point_c",
+              "displayName": "dew_point_c",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "wind_speed_ms",
+              "displayName": "wind_speed_ms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "wind_dir_deg",
+              "displayName": "wind_dir_deg",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "humidity_pct",
+              "displayName": "humidity_pct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "rain_mm",
+              "displayName": "rain_mm",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pm25_ugm3",
+              "displayName": "pm25_ugm3",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pm10_ugm3",
+              "displayName": "pm10_ugm3",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "8fea6a2b-4314-4697-a0e4-89446131c438",
+      "name": "Insert Into Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        848,
+        64
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "OOa7UHA1ppZyXW2R",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT *\nFROM solar_weather_data\nORDER BY ts DESC\nLIMIT 10;",
+        "options": {}
+      },
+      "id": "5c186015-5d03-41eb-8c7b-633fde67dbad",
+      "name": "Read Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1072,
+        64
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "OOa7UHA1ppZyXW2R",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "d1ec6bb4-7df4-4493-8067-50e9f9b488cb",
+      "name": "Every 3 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://10.110.188.138:8000/api/realtime",
+        "options": {}
+      },
+      "id": "67614e4f-348e-4cb9-b5b2-42766c1a7447",
+      "name": "GET Solar Panel Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -48,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=34.73&longitude=10.72&current=temperature_2m,relative_humidity_2m,dew_point_2m,rain,wind_speed_10m,wind_direction_10m,shortwave_radiation&timezone=auto",
+        "options": {}
+      },
+      "id": "6d5e000f-d323-4cf0-a142-067ff38cf373",
+      "name": "GET Weather Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -48,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=34.73&longitude=10.72&current=pm10,pm2_5&timezone=auto",
+        "options": {}
+      },
+      "id": "2ef7827f-ee73-4d7b-b846-8e9a7814161b",
+      "name": "GET Air Quality Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        176,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.authenticated}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "c3d49498-9dd2-4003-bda4-cf71df6afcda",
+      "name": "Data available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        176,
+        -32
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract Plant Data3": {
+      "main": [
+        [
+          {
+            "node": "Merge Plant + Weather",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Weather And AQ": {
+      "main": [
+        [
+          {
+            "node": "Merge Plant + Weather",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Plant + Weather": {
+      "main": [
+        [
+          {
+            "node": "Insert Into Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Into Postgres": {
+      "main": [
+        [
+          {
+            "node": "Read Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 3 Minutes": {
+      "main": [
+        [
+          {
+            "node": "GET Solar Panel Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GET Weather Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Solar Panel Data": {
+      "main": [
+        [
+          {
+            "node": "Data available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Weather Data": {
+      "main": [
+        [
+          {
+            "node": "GET Air Quality Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Air Quality Data": {
+      "main": [
+        [
+          {
+            "node": "Combine Weather And AQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data available?": {
+      "main": [
+        [
+          {
+            "node": "Extract Plant Data3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3b3ef2cf-92aa-4146-af89-a341d6198387",
+  "meta": {
+    "instanceId": "fa84c355e01109afdac0de05b5a363cc1eeafcda789976bc114525081fc94118"
+  },
+  "nodeGroups": [],
+  "id": "jqhzZF32ZmnNROep",
+  "tags": []
+}
